@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>360 Scene — Immersive Ad Prototype</title>
+    <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
+  </head>
+  <body>
+    <a-scene>
+      <a-assets timeout="4000">
+        <img id="world" src="sky.jpg">
+        <img id="adCreative" src="ad.jpg">
+      </a-assets>
+
+      <!-- The 360 environment wraps all the way around you -->
+      <a-sky src="#world"></a-sky>
+
+      <!-- Your ad, floating in that world -->
+      <a-entity position="0 1.6 -4">
+        <a-plane width="3.2" height="1.8" color="#0B0B14"></a-plane>
+        <a-plane width="3" height="1.68" position="0 0 0.02"
+                 material="src: #adCreative"></a-plane>
+      </a-entity>
+
+      <a-entity light="type: ambient; intensity: 1"></a-entity>
+
+      <a-entity position="0 1.6 0">
+        <a-camera>
+          <a-cursor color="#FFFFFF"></a-cursor>
+        </a-camera>
+      </a-entity>
+    </a-scene>
+  </body>
+</html>
