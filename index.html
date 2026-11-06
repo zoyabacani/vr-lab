@@ -2,75 +2,81 @@
 <html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>360 Scene — Immersive Ad Prototype</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drop 001 — Immersive Ad Prototype</title>
 <script src="https://cdn.jsdelivr.net/npm/aframe@1.7.0/dist/aframe.min.js"></script>
-</head>
-<body>
-<canvas id="skyC" width="2048" height="1024" style="display:none"></canvas>
-<canvas id="adC" width="1280" height="720" style="display:none"></canvas>
 <script>
-// Sky panorama (equirectangular)
-(function(){
-  var c=document.getElementById('skyC'),x=c.getContext('2d');
-  var g=x.createLinearGradient(0,0,0,1024);
-  g.addColorStop(0,'#05061a');g.addColorStop(.5,'#2b1458');
-  g.addColorStop(.72,'#e0457b');g.addColorStop(.8,'#ff9a5c');
-  g.addColorStop(.801,'#10101c');g.addColorStop(1,'#07070f');
-  x.fillStyle=g;x.fillRect(0,0,2048,1024);
-  for(var i=0;i<500;i++){x.fillStyle='rgba(255,255,255,'+Math.random()*.9+')';
-    x.fillRect(Math.random()*2048,Math.random()*480,1.5,1.5);}
-  x.strokeStyle='rgba(255,154,92,.25)';
-  for(var j=0;j<14;j++){x.beginPath();x.moveTo(0,820+j*14);x.lineTo(2048,820+j*14);x.stroke();}
-})();
-
-// Animated ad graphic drawn onto a canvas texture
-AFRAME.registerComponent('ad-canvas',{
+// Ad panel: floats, tilts toward you, grows on hover/click
+AFRAME.registerComponent('ad-panel',{
   init:function(){
-    this.c=document.getElementById('adC');this.x=this.c.getContext('2d');this.t=0;
-    var self=this;
-    this.el.addEventListener('materialtextureloaded',function(){self.ready=true;});
+    var el=this.el,self=this;this.hover=false;this.boost=0;
+    el.addEventListener('mouseenter',function(){self.hover=true;});
+    el.addEventListener('mouseleave',function(){self.hover=false;});
+    el.addEventListener('click',function(){self.boost=1;});
   },
-  tick:function(time){
-    var x=this.x,W=1280,H=720,t=time/1000;
-    x.fillStyle='#0B0B14';x.fillRect(0,0,W,H);
-    // sweeping speed lines
-    for(var i=0;i<18;i++){
-      var off=((t*400*(0.5+i%5*.3)+i*173)%(W+600))-300;
-      x.strokeStyle='hsla('+(190+i*8)+',90%,60%,.55)';x.lineWidth=4+i%4*3;
-      x.beginPath();x.moveTo(off,i*42);x.lineTo(off-260,i*42+120);x.stroke();
-    }
-    // pulsing ring
-    var r=190+Math.sin(t*2)*18;
-    x.strokeStyle='#fff';x.lineWidth=10;
-    x.beginPath();x.arc(W/2,H/2,r,0,Math.PI*2);x.stroke();
-    // text
-    x.fillStyle='#fff';x.textAlign='center';
-    x.font='900 130px Arial Black, Arial, sans-serif';
-    x.fillText('RUN THE',W/2,H/2-5);
-    x.fillStyle='#FFE14D';x.fillText('NIGHT',W/2,H/2+120);
-    x.fillStyle='#fff';x.font='28px Arial, sans-serif';
-    x.fillText('NEW SEASON  ·  IN STORE NOW',W/2,H-50);
-    if(this.ready){var m=this.el.getObject3D('mesh').material.map;if(m)m.needsUpdate=true;}
+  tick:function(t,dt){
+    var o=this.el.object3D;
+    o.position.y=1.7+Math.sin(t/900)*.07;
+    var target=this.hover?1.12:1; this.boost*=0.92;
+    var s=o.scale.x+(target+this.boost*.12-o.scale.x)*.12;
+    o.scale.set(s,s,s);
+    o.rotation.y=Math.sin(t/2600)*.06;
   }
 });
-// Gentle float
-AFRAME.registerComponent('bob',{tick:function(t){this.el.object3D.position.y=1.6+Math.sin(t/900)*.06;}});
+AFRAME.registerComponent('spin',{
+  schema:{x:{default:0},y:{default:.4},z:{default:0}},
+  tick:function(t,dt){var r=this.el.object3D.rotation,k=dt/1000;
+    r.x+=this.data.x*k;r.y+=this.data.y*k;r.z+=this.data.z*k;}
+});
+AFRAME.registerComponent('drift',{
+  schema:{amp:{default:.25},speed:{default:1},phase:{default:0}},
+  init:function(){this.y0=this.el.object3D.position.y;},
+  tick:function(t){this.el.object3D.position.y=this.y0+Math.sin(t/1000*this.data.speed+this.data.phase)*this.data.amp;}
+});
 </script>
+</head>
+<body style="margin:0;background:#0A0420">
+<a-scene renderer="colorManagement: true" loading-screen="backgroundColor: #0A0420; dotsColor: #C6FF00">
+  <a-assets timeout="8000">
+    <img id="world" src="sky.jpg">
+    <img id="adCreative" src="ad.jpg">
+  </a-assets>
 
-<a-scene vr-mode-ui="enabled: true">
-  <a-sky src="#skyC"></a-sky>
+  <!-- 360 world -->
+  <a-sky src="#world"></a-sky>
 
-  <a-entity position="0 1.6 -4" bob>
-    <a-plane width="3.2" height="1.8" color="#0B0B14"></a-plane>
-    <a-plane width="3" height="1.68" position="0 0 0.02"
-             material="src: #adC; shader: flat" ad-canvas></a-plane>
+  <!-- The ad: chrome frame + glow + graphic -->
+  <a-entity position="0 1.7 -4" ad-panel class="clickable">
+    <a-plane width="3.6" height="2.12" position="0 0 -0.04" material="color:#25E8FF; shader:flat; opacity:.25; transparent:true"></a-plane>
+    <a-plane width="3.3" height="1.9" position="0 0 -0.02" material="color:#C6FF00; shader:flat"></a-plane>
+    <a-plane width="3.24" height="1.84" position="0 0 -0.01" material="color:#0A0420; shader:flat"></a-plane>
+    <a-plane width="3.2" height="1.8" position="0 0 0.01" material="src:#adCreative; shader:flat"></a-plane>
   </a-entity>
 
-  <a-entity light="type: ambient; intensity: 1"></a-entity>
+  <!-- Floating y2k objects -->
+  <a-torus position="-3.2 2.2 -3.2" radius=".4" radius-tubular=".035" segments-tubular="48"
+           material="color:#FF2BD6; shader:flat; wireframe:true" spin="x:.5; y:.8" drift="amp:.2; speed:1.2"></a-torus>
+  <a-icosahedron position="3.4 1.4 -3" radius=".38"
+           material="color:#25E8FF; shader:flat; wireframe:true" spin="x:.3; y:.6" drift="amp:.18; speed:.9; phase:2"></a-icosahedron>
+  <a-octahedron position="2.5 3.0 -5" radius=".3"
+           material="color:#C6FF00; shader:flat" spin="y:1.1" drift="amp:.25; speed:1.5; phase:1"></a-octahedron>
+  <a-torus position="-3.6 1.0 -5.5" radius=".55" radius-tubular=".05" segments-tubular="48"
+           material="color:#B8A6FF; shader:flat; wireframe:true" spin="x:.9; z:.4" drift="amp:.3; speed:.7; phase:4"></a-torus>
+  <a-octahedron position="-1.8 3.2 -6" radius=".22"
+           material="color:#FFFFFF; shader:flat" spin="y:1.6" drift="amp:.2; speed:1.8; phase:3"></a-octahedron>
+
+  <!-- Glowing floor rings under the ad -->
+  <a-ring position="0 .02 -4" rotation="-90 0 0" radius-inner="1.3" radius-outer="1.38"
+          material="color:#25E8FF; shader:flat"></a-ring>
+  <a-ring position="0 .02 -4" rotation="-90 0 0" radius-inner="1.7" radius-outer="1.72"
+          material="color:#FF2BD6; shader:flat"></a-ring>
 
   <a-entity position="0 1.6 0">
-    <a-camera><a-cursor color="#FFFFFF"></a-cursor></a-camera>
+    <a-camera look-controls="reverseMouseDrag: true">
+      <a-cursor color="#C6FF00" raycaster="objects: .clickable"
+                animation__hover="property: scale; startEvents: mouseenter; to: 1.6 1.6 1.6; dur: 150"
+                animation__leave="property: scale; startEvents: mouseleave; to: 1 1 1; dur: 150"></a-cursor>
+    </a-camera>
   </a-entity>
 </a-scene>
 </body>
