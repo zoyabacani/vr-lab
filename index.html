@@ -1,34 +1,77 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <title>360 Scene — Immersive Ad Prototype</title>
-    <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
-  </head>
-  <body>
-    <a-scene>
-      <a-assets timeout="4000">
-        <img id="world" src="sky.jpg">
-        <img id="adCreative" src="ad.jpg">
-      </a-assets>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>360 Scene — Immersive Ad Prototype</title>
+<script src="https://cdn.jsdelivr.net/npm/aframe@1.7.0/dist/aframe.min.js"></script>
+</head>
+<body>
+<canvas id="skyC" width="2048" height="1024" style="display:none"></canvas>
+<canvas id="adC" width="1280" height="720" style="display:none"></canvas>
+<script>
+// Sky panorama (equirectangular)
+(function(){
+  var c=document.getElementById('skyC'),x=c.getContext('2d');
+  var g=x.createLinearGradient(0,0,0,1024);
+  g.addColorStop(0,'#05061a');g.addColorStop(.5,'#2b1458');
+  g.addColorStop(.72,'#e0457b');g.addColorStop(.8,'#ff9a5c');
+  g.addColorStop(.801,'#10101c');g.addColorStop(1,'#07070f');
+  x.fillStyle=g;x.fillRect(0,0,2048,1024);
+  for(var i=0;i<500;i++){x.fillStyle='rgba(255,255,255,'+Math.random()*.9+')';
+    x.fillRect(Math.random()*2048,Math.random()*480,1.5,1.5);}
+  x.strokeStyle='rgba(255,154,92,.25)';
+  for(var j=0;j<14;j++){x.beginPath();x.moveTo(0,820+j*14);x.lineTo(2048,820+j*14);x.stroke();}
+})();
 
-      <!-- The 360 environment wraps all the way around you -->
-      <a-sky src="#world"></a-sky>
+// Animated ad graphic drawn onto a canvas texture
+AFRAME.registerComponent('ad-canvas',{
+  init:function(){
+    this.c=document.getElementById('adC');this.x=this.c.getContext('2d');this.t=0;
+    var self=this;
+    this.el.addEventListener('materialtextureloaded',function(){self.ready=true;});
+  },
+  tick:function(time){
+    var x=this.x,W=1280,H=720,t=time/1000;
+    x.fillStyle='#0B0B14';x.fillRect(0,0,W,H);
+    // sweeping speed lines
+    for(var i=0;i<18;i++){
+      var off=((t*400*(0.5+i%5*.3)+i*173)%(W+600))-300;
+      x.strokeStyle='hsla('+(190+i*8)+',90%,60%,.55)';x.lineWidth=4+i%4*3;
+      x.beginPath();x.moveTo(off,i*42);x.lineTo(off-260,i*42+120);x.stroke();
+    }
+    // pulsing ring
+    var r=190+Math.sin(t*2)*18;
+    x.strokeStyle='#fff';x.lineWidth=10;
+    x.beginPath();x.arc(W/2,H/2,r,0,Math.PI*2);x.stroke();
+    // text
+    x.fillStyle='#fff';x.textAlign='center';
+    x.font='900 130px Arial Black, Arial, sans-serif';
+    x.fillText('RUN THE',W/2,H/2-5);
+    x.fillStyle='#FFE14D';x.fillText('NIGHT',W/2,H/2+120);
+    x.fillStyle='#fff';x.font='28px Arial, sans-serif';
+    x.fillText('NEW SEASON  ·  IN STORE NOW',W/2,H-50);
+    if(this.ready){var m=this.el.getObject3D('mesh').material.map;if(m)m.needsUpdate=true;}
+  }
+});
+// Gentle float
+AFRAME.registerComponent('bob',{tick:function(t){this.el.object3D.position.y=1.6+Math.sin(t/900)*.06;}});
+</script>
 
-      <!-- Your ad, floating in that world -->
-      <a-entity position="0 1.6 -4">
-        <a-plane width="3.2" height="1.8" color="#0B0B14"></a-plane>
-        <a-plane width="3" height="1.68" position="0 0 0.02"
-                 material="src: #adCreative"></a-plane>
-      </a-entity>
+<a-scene vr-mode-ui="enabled: true">
+  <a-sky src="#skyC"></a-sky>
 
-      <a-entity light="type: ambient; intensity: 1"></a-entity>
+  <a-entity position="0 1.6 -4" bob>
+    <a-plane width="3.2" height="1.8" color="#0B0B14"></a-plane>
+    <a-plane width="3" height="1.68" position="0 0 0.02"
+             material="src: #adC; shader: flat" ad-canvas></a-plane>
+  </a-entity>
 
-      <a-entity position="0 1.6 0">
-        <a-camera>
-          <a-cursor color="#FFFFFF"></a-cursor>
-        </a-camera>
-      </a-entity>
-    </a-scene>
-  </body>
+  <a-entity light="type: ambient; intensity: 1"></a-entity>
+
+  <a-entity position="0 1.6 0">
+    <a-camera><a-cursor color="#FFFFFF"></a-cursor></a-camera>
+  </a-entity>
+</a-scene>
+</body>
 </html>
